@@ -1,13 +1,15 @@
 //LED & Button Pins
-#define MIDDLE 0
+#define MIDDLE 4
 #define MR_ML  1
-#define TR_BL  4
+#define TR_BL  2
 #define BR_TL  3
-#define BUTTON 2
+#define BUTTON 0
 
 #define numberDuration 2000
 #define rollAnimationLength 3
 #define rollAnimationPause 150
+ 
+boolean seeded = false;
 
 void rollAnimation() {
   const int ledPins[] = {MR_ML, TR_BL, BR_TL, MIDDLE};
@@ -56,25 +58,28 @@ void showNumber() {
 }
 
 void rollDice() {
+  if (!seeded) {
+    randomSeed(millis());
+    seeded = true;
+  }
+  
   rollAnimation();
   showNumber();
 }
 
-void setup() {
-  randomSeed(analogRead(0));
-  
+void setup() {  
   pinMode(MIDDLE, OUTPUT);
   pinMode(MR_ML, OUTPUT);
   pinMode(TR_BL, OUTPUT);
   pinMode(BR_TL, OUTPUT);
   
-  pinMode (BUTTON, INPUT_PULLUP); 
+  pinMode (BUTTON, INPUT_PULLUP);
 }
 
 void loop() {
   if (digitalRead(BUTTON) == LOW) {
-    rollDice(); 
-  } 
+    rollDice();
+  }
 }
 
 
