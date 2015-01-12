@@ -1,6 +1,6 @@
-double r1 = 1230;
-double r2 = 807;
-double maxVoltage = 20.33898305;
+double maxVoltage = 10.5;
+
+volatile double voltage = 0;
 
 //Pin connected to ST_CP of 74HC595
 int latchPin = 8;
@@ -35,8 +35,19 @@ int eight = 255 - topMiddle - middleMiddle - bottomMiddle - topLeft - bottomLeft
 int nine  = 255 - topMiddle - middleMiddle - bottomMiddle - topLeft - topRight - bottomRight;
 
 // the setup function runs once when you press reset or power the board
-void setup() {
-  // initialize digital pin 13 as an output.
+void setup() {  
+  // initialize timer1 
+  noInterrupts();           // disable all interrupts
+  TCCR1A = 0;
+  TCCR1B = 0;
+  TCNT1  = 0;
+
+  OCR1A = 31250;            // compare match register 16MHz/256/2Hz
+  TCCR1B |= (1 << WGM12);   // CTC mode
+  TCCR1B |= (1 << CS12);    // 256 prescaler 
+  TIMSK1 |= (1 << OCIE1A);  // enable timer compare interrupt
+  interrupts();             // enable all interrupts
+
   pinMode(A1, INPUT);
   pinMode(latchPin, OUTPUT);
   pinMode(clockPin, OUTPUT);
@@ -67,28 +78,35 @@ int getEncoded(int digit) {
   };
 }
 
+ISR(TIMER1_COMPA_vect) {
+  double raw = (double) analogRead(A1);
+  voltage = (raw / 1023) * maxVoltage;
+}
+
 // the loop function runs over and over again forever
 void loop() {
-  double raw = (double) analogRead(A1);
-  double voltage = (raw / 1023) * maxVoltage;
+
+  int tensDigit   = (int) voltage;
+  int onesDigit   = (int)(voltage * 10) %  10;
+  int tenthsDigit = (int)(voltage * 100) % 10;
   
-  int tensDigit   = (int) voltage       / 10;
-  int onesDigit   = (int) voltage       % 10;
-  int tenthsDigit = (int)(voltage * 10) % 10;
+  //int tensDigit   = (int) voltage       / 10;
+  //int onesDigit   = (int) voltage       % 10;
+  //int tenthsDigit = (int)(voltage * 10) % 10;
   
-  int tensEncoded = getEncoded(tensDigit);
+  int tensEncoded = getEncoded(tensDigit)  - decimalPlace;
   int onesEncoded = getEncoded(onesDigit);
   int tenthsEncoded = getEncoded(tenthsDigit);
   
   digitalWrite(leftAnode, HIGH);
-  if (tensEncoded == zero) {
+  /*if (tensEncoded == zero) {
     tensEncoded = off;
-  }
+  }*/
   setDigit(tensEncoded);
   digitalWrite(leftAnode, LOW);
   setDigit(255);
   digitalWrite(midAnode, HIGH);
-  setDigit(onesEncoded - decimalPlace);
+  setDigit(onesEncoded);
   digitalWrite(midAnode, LOW);  
   setDigit(255);
   digitalWrite(rightAnode, HIGH);
